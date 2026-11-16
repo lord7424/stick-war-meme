@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stick War: Legacy — Simulador de Partida</title>
+  <style>
+    :root {
+      --bg: #12100e;
+      --panel: #1d1915;
+      --panel-2: #28221c;
+      --border: #4a3d2f;
+      --gold: #f5c542;
+      --gold-dim: #9e791b;
+      --blue: #4aa3ff;
+      --red: #ff5252;
+      --text: #f3ead8;
+      --muted: #b6a68c;
+      --green: #4cd97b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body {
+      background: radial-gradient(circle at top, #231d17 0%, var(--bg) 70%);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+      gap: 10px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 16px;
+      gap: 12px;
+    }
+
+    .title-group h1 {
+      font-size: 1.15rem;
+      letter-spacing: 0.5px;
+      color: var(--gold);
+    }
+
+    .title-group span {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .hud-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .stat-pill {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .stat-pill.gold { color: var(--gold); border-color: var(--gold-dim); }
+    .stat-pill.pop { color: var(--green); }
+
+    .btn {
+      background: linear-gradient(180deg, #3a3026, #261f18);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn.active {
+      background: linear-gradient(180deg, #6e5214, #47340b);
+      border-color: var(--gold);
+      color: #fff6d6;
+    }
+
+    .btn.attack { border-color: #9e3838; }
+    .btn.attack.active {
+      background: linear-gradient(180deg, #8f2626, #591515);
+      border-color: var(--red);
+    }
+
+    .btn.defend { border-color: #2f699e; }
+    .btn.defend.active {
+      background: linear-gradient(180deg, #215280, #143452);
+      border-color: var(--blue);
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 1200px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 14px 35px rgba(0,0,0,0.55);
+      background: #1b2418;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: crosshair;
+    }
+
+    .overlay-banner {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 8, 6, 0.78);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .overlay-banner.show { display: flex; }
+    .overlay-banner h2 { font-size: 2rem; color: var(--gold); }
+    .overlay-banner p { color: var(--muted); max-width: 480px; }
+
+    .controls-panel {
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .controls-panel { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .card h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .unit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .unit-btn {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 8px;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .unit-btn:hover:not(:disabled) { border-color: var(--gold); }
+    .unit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .unit-btn .u-name { font-size: 0.82rem; font-weight: 700; }
+    .unit-btn .u-meta { font-size: 0.72rem; color: var(--gold); }
+    .unit-btn .u-sub { font-size: 0.68rem; color: var(--muted); }
+    .unit-btn .u-progress {
+      position: absolute;
+      left: 0; bottom: 0; height: 3px;
+      background: var(--gold);
+      width: 0%;
+    }
+
+    .row-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .queue-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 28px;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .queue-chip {
+      background: #2f261d;
+      border: 1px solid var(--gold-dim);
+      color: var(--gold);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .help-text {
+      font-size: 0.76rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-group">
+      <h1>STICK WAR: LEGACY — SIMULADOR DE PARTIDA</h1>
+      <span>Perspectiva Clássica • Mineração Multi-Slot • Fila de Treino • Comandos • Controle Direto</span>
+    </div>
+    <div class="hud-stats">
+      <div class="stat-pill gold">🪙 Ouro: <span id="goldDisplay">250</span></div>
+      <div class="stat-pill pop">👥 Pop: <span id="popDisplay">1/15</span></div>
+      <div class="stat-pill">⏱️ <span id="timeDisplay">00:00</span></div>
+      <div class="stat-pill" style="color: var(--blue);">🏛️ <span id="playerStatueDisplay">1500</span></div>
+      <div class="stat-pill" style="color: var(--red);">🗿 <span id="enemyStatueDisplay">1500</span></div>
+      <button class="btn active" id="camModeBtn">🎥 Câmera: Auto</button>
+      <button class="btn" id="restartBtn">Reiniciar</button>
+    </div>
+  </header>
+
+  <div class="canvas-wrap">
+    <canvas id="gameCanvas" width="1200" height="440"></canvas>
+    <div class="overlay-banner" id="overlayBanner">
+      <h2 id="overlayTitle">VITÓRIA!</h2>
+      <p id="overlayDesc"></p>
+      <button class="btn active" id="overlayRestartBtn">Jogar Novamente</button>
+    </div>
+  </div>
+
+  <section class="controls-panel">
+    <div class="card">
+      <h3>
+        <span>Recrutar Tropas</span>
+        <span id="queueCountLabel">Fila: 0/5</span>
+      </h3>
+      <div class="unit-grid" id="unitButtons"></div>
+      <div class="queue-strip" id="queueStrip">Fila vazia — clique em uma unidade para treinar.</div>
+    </div>
+
+    <div class="card">
+      <h3>Comandos do Exército</h3>
+      <div class="row-btns">
+        <button class="btn defend active" data-cmd="DEFEND">🛡️ Defend</button>
+        <button class="btn attack" data-cmd="ATTACK">⚔️ Attack</button>
+        <button class="btn" data-cmd="STAND">⏸️ Stand Ground</button>
+      </div>
+      <div class="row-btns">
+        <button class="btn" id="toggleControlBtn">🎮 Controlar Selecionado</button>
+        <button class="btn" id="releaseControlBtn">🤖 Devolver à IA</button>
+      </div>
+      <div class="help-text">
+        <b>Clique no campo</b> para selecionar sua tropa.<br/>
+        <b>Controle Direto:</b> <code>A/D</code> ou <code>←/→</code> anda • <code>Espaço</code> ataca • <code>E</code> habilidade.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Melhorias da Partida</h3>
+      <div class="row-btns" id="upgradeButtons"></div>
+      <div class="help-text" id="selectedInfo">
+        Nenhuma unidade selecionada. Vários mineiros agora coletam ouro simultaneamente.
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const UNIT_DEFS = {
+        miner: {
+          name: "Miner",
+          cost: 100,
+          pop: 1,
+          trainTime: 3.4,
+          hp: 100,
+          dmg: 14,
+          range: 42,
+          atkSpeed: 1.2,
+          speed: 80,
+          color: "#f5c542",
+          role: "miner"
+        },
+        swordwrath: {
+          name: "Swordwrath",
+          cost: 125,
+          pop: 1,
+          trainTime: 3.8,
+          hp: 165,
+          dmg: 38,
+          range: 54,
+          atkSpeed: 1.45,
+          speed: 102,
+          color: "#4aa3ff",
+          role: "melee"
+        },
+        archer: {
+          name: "Archer",
+          cost: 250,
+          pop: 1,
+          trainTime: 4.8,
+          hp: 125,
+          dmg: 36,
+          range: 310,
+          atkSpeed: 1.25,
+          speed: 90,
+          color: "#4cd97b",
+          role: "ranged"
+        },
+        spearton: {
+          name: "Spearton",
+          cost: 500,
+          pop: 2,
+          trainTime: 6.5,
+          hp: 380,
+          dmg: 58,
+          range: 76,
+          atkSpeed: 1.2,
+          speed: 86,
+          color: "#9b7bff",
+          role: "tank"
+        },
+        magikill: {
+          name: "Magikill",
+          cost: 800,
+          pop: 3,
+          trainTime: 8.2,
+          hp: 250,
+          dmg: 72,
+          range: 280,
+          atkSpeed: 1.05,
+          speed: 80,
+          color: "#ff79c6",
+          role: "mage"
+        },
+        giant: {
+          name: "Giant",
+          cost: 1500,
+          pop: 4,
+          trainTime: 11.5,
+          hp: 1150,
+          dmg: 145,
+          range: 88,
+          atkSpeed: 0.9,
+          speed: 60,
+          color: "#ff9f43",
+          role: "giant"
+        }
+      };
+
+      const UPGRADE_DEFS = {
+        minerSpeed: {
+          name: "Picareta Veloz",
+          baseCost: 150,
+          maxLv: 5,
+          desc: "+20% velocidade e carga de mineração"
+        },
+        popCap: {
+          name: "Logística",
+          baseCost: 200,
+          maxLv: 5,
+          desc: "+5 limite de população"
+        },
+        weaponEdge: {
+          name: "Lâminas Afadas",
+          baseCost: 200,
+          maxLv: 5,
+          desc: "+20% dano de todas as tropas"
+        },
+        armorPlate: {
+          name: "Armadura",
+          baseCost: 200,
+          maxLv: 5,
+          desc: "+18% vida máxima das tropas"
+        }
+      };
+
+      // Mundo amplo com câmera lateral estilo Stick War: Legacy
+      const WORLD = {
+        width: 1800,
+        height: 440,
+        horizonY: 255,
+        groundTopY: 300,
+        groundBottomY: 410,
+        playerStatueX: 165,
+        enemyStatueX: 1635,
+        playerSpawnX: 235,
+        enemySpawnX: 1565,
+        goldMines: [
+          { x: 75, z: 0.45, label: "Veio de Ouro" },
+          { x: 1725, z: 0.45, label: "Veio Inimigo" }
+        ]
+      };
+
+      let state;
+      let camera = { x: 0, mode: "AUTO" }; // AUTO | OVERVIEW
+
+      function createInitialState() {
+        const s = {
+          time: 0,
+          over: false,
+          gold: 250,
+          command: "DEFEND",
+          queue: [],
+          trainTimer: 0,
+          upgrades: {
+            minerSpeed: 0,
+            popCap: 0,
+            weaponEdge: 0,
+            armorPlate: 0
+          },
+          playerStatue: { hp: 1500, maxHp: 1500, x: WORLD.playerStatueX, z: 0.45, team: "player", hitFlash: 0 },
+          enemyStatue: { hp: 1500, maxHp: 1500, x: WORLD.enemyStatueX, z: 0.45, team: "enemy", hitFlash: 0 },
+          units: [],
+          projectiles: [],
+          particles: [],
+          slashes: [],
+          floatingTexts: [],
+          nextId: 1,
+          selectedUnitId: null,
+          controlledUnitId: null,
+          enemy: {
+            gold: 150,
+            popCap: 15,
+            command: "DEFEND",
+            openingDelay: 16.0,
+            trainTimer: 16.0,
+            decisionTimer: 12.0,
+            upgradeTimer: 32.0
+          }
+        };
+
+        s.units.push(spawnUnit("player", "miner", s));
+        s.units.push(spawnUnit("enemy", "miner", s));
+        return s;
+      }
+
+      function getUnitPop(unit) {
+        return UNIT_DEFS[unit.type].pop;
+      }
+
+      function getCurrentPop(team) {
+        return state.units
+          .filter(u => u.team === team)
+          .reduce((acc, u) => acc + getUnitPop(u), 0);
+      }
+
+      function getQueuePop() {
+        return state.queue.reduce((acc, type) => acc + UNIT_DEFS[type].pop, 0);
+      }
+
+      function getPlayerPopCap() {
+        return 15 + state.upgrades.popCap * 5;
+      }
+
+      function spawnUnit(team, type, s = state) {
+        const def = UNIT_DEFS[type];
+        const isPlayer = team === "player";
+        const dmgMult = isPlayer
+          ? 1 + s.upgrades.weaponEdge * 0.2
+          : 1 + Math.floor(s.time / 75) * 0.1;
+        const hpMult = isPlayer
+          ? 1 + s.upgrades.armorPlate * 0.18
+          : 1 + Math.floor(s.time / 85) * 0.1;
+        const maxHp = Math.round(def.hp * hpMult);
+
+        // Profundidade z (0 = mais longe no horizonte, 1 = mais perto da câmera)
+        const zLane = 0.22 + Math.random() * 0.62;
+
+        return {
+          id: s.nextId++,
+          team,
+          type,
+          name: def.name,
+          x: (isPlayer ? WORLD.playerSpawnX : WORLD.enemySpawnX) + (Math.random() * 34 - 17),
+          z: zLane,
+          vx: 0,
+          hp: maxHp,
+          maxHp,
+          dmg: Math.round(def.dmg * dmgMult),
+          range: def.range,
+          atkSpeed: def.atkSpeed,
+          speed: def.speed,
+          color: def.color,
+          role: def.role,
+          animState: "idle",
+          atkCooldown: 0,
+          atkAnimTimer: 0,
+          abilityCooldown: 0,
+          carryingGold: 0,
+          minerState: "TO_MINE",
+          mineTimer: 0,
+          animPhase: Math.random() * Math.PI * 2,
+          hitFlash: 0
+        };
+      }
+
+      function getScreenYFromZ(z) {
+        return WORLD.groundTopY + z * (WORLD.groundBottomY - WORLD.groundTopY);
+      }
+
+      function getScaleFromZ(z) {
+        return 0.82 + z * 0.34;
+      }
+
+      const unitButtonsEl = document.getElementById("unitButtons");
+      const upgradeButtonsEl = document.getElementById("upgradeButtons");
+      const queueStripEl = document.getElementById("queueStrip");
+      const queueCountLabel = document.getElementById("queueCountLabel");
+      const selectedInfoEl = document.getElementById("selectedInfo");
+      const overlayBanner = document.getElementById("overlayBanner");
+      const overlayTitle = document.getElementById("overlayTitle");
+      const overlayDesc = document.getElementById("overlayDesc");
+      const camModeBtn = document.getElementById("camModeBtn");
+
+      function buildStaticUI() {
+        unitButtonsEl.innerHTML = "";
+        Object.entries(UNIT_DEFS).forEach(([key, def]) => {
+          const btn = document.createElement("button");
+          btn.className = "unit-btn";
+          btn.dataset.type = key;
+          btn.innerHTML = `
+            <span class="u-name">${def.name}</span>
+            <span class="u-meta">🪙 ${def.cost} • 👥 ${def.pop}</span>
+            <span class="u-sub">HP ${def.hp} • ATK ${def.dmg}</span>
+            <span class="u-progress"></span>
+          `;
+          btn.addEventListener("click", () => enqueueUnit(key));
+          unitButtonsEl.appendChild(btn);
+        });
+
+        upgradeButtonsEl.innerHTML = "";
+        Object.entries(UPGRADE_DEFS).forEach(([key, def]) => {
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.dataset.upg = key;
+          btn.addEventListener("click", () => buyUpgrade(key));
+          upgradeButtonsEl.appendChild(btn);
+        });
+      }
+
+      function enqueueUnit(type) {
+        if (state.over) return;
+        const def = UNIT_DEFS[type];
+        if (state.queue.length >= 5) return;
+        if (state.gold < def.cost) return;
+        if (getCurrentPop("player") + getQueuePop() + def.pop > getPlayerPopCap()) return;
+
+        state.gold -= def.cost;
+        state.queue.push(type);
+        if (state.queue.length === 1 && state.trainTimer <= 0) {
+          state.trainTimer = def.trainTime;
+        }
+        updateUI();
+      }
+
+      function getUpgradeCost(key) {
+        const def = UPGRADE_DEFS[key];
+        const lv = state.upgrades[key];
+        return Math.round(def.baseCost * Math.pow(1.42, lv));
+      }
+
+      function buyUpgrade(key) {
+        if (state.over) return;
+        const def = UPGRADE_DEFS[key];
+        const lv = state.upgrades[key];
+        if (lv >= def.maxLv) return;
+        const cost = getUpgradeCost(key);
+        if (state.gold < cost) return;
+
+        state.gold -= cost;
+        state.upgrades[key]++;
+
+        if (key === "weaponEdge") {
+          state.units.filter(u => u.team === "player").forEach(u => {
+            u.dmg = Math.round(UNIT_DEFS[u.type].dmg * (1 + state.upgrades.weaponEdge * 0.2));
+          });
+        } else if (key === "armorPlate") {
+          state.units.filter(u => u.team === "player").forEach(u => {
+            const oldMax = u.maxHp;
+            u.maxHp = Math.round(UNIT_DEFS[u.type].hp * (1 + state.upgrades.armorPlate * 0.18));
+            u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - oldMax));
+          });
+        }
+        updateUI();
+      }
+
+      camModeBtn.addEventListener("click", () => {
+        camera.mode = camera.mode === "AUTO" ? "OVERVIEW" : "AUTO";
+        camModeBtn.textContent = camera.mode === "AUTO" ? "🎥 Câmera: Auto" : "🔭 Câmera: Geral";
+      });
+
+      document.querySelectorAll("[data-cmd]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.command = btn.dataset.cmd;
+          document.querySelectorAll("[data-cmd]").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+        });
+      });
+
+      document.getElementById("toggleControlBtn").addEventListener("click", () => {
+        if (!state.selectedUnitId) return;
+        const u = state.units.find(x => x.id === state.selectedUnitId && x.team === "player");
+        if (!u) return;
+        state.controlledUnitId = state.controlledUnitId === u.id ? null : u.id;
+        updateUI();
+      });
+
+      document.getElementById("releaseControlBtn").addEventListener("click", () => {
+        state.controlledUnitId = null;
+        updateUI();
+      });
+
+      function restartGame() {
+        state = createInitialState();
+        camera.x = 0;
+        overlayBanner.classList.remove("show");
+        document.querySelectorAll("[data-cmd]").forEach(b => {
+          b.classList.toggle("active", b.dataset.cmd === "DEFEND");
+        });
+        updateUI();
+      }
+
+      document.getElementById("restartBtn").addEventListener("click", restartGame);
+      document.getElementById("overlayRestartBtn").addEventListener("click", restartGame);
+
+      canvas.addEventListener("click", (e) => {
+        if (state.over) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const worldX = (e.clientX - rect.left) * scaleX + camera.x;
+
+        let closest = null;
+        let bestDist = 56;
+        for (const u of state.units) {
+          if (u.team !== "player") continue;
+          const d = Math.abs(u.x - worldX);
+          if (d < bestDist) {
+            bestDist = d;
+            closest = u;
+          }
+        }
+        state.selectedUnitId = closest ? closest.id : null;
+        if (state.controlledUnitId && state.controlledUnitId !== state.selectedUnitId) {
+          state.controlledUnitId = null;
+        }
+        updateUI();
+      });
+
+      const keys = {};
+      window.addEventListener("keydown", (e) => {
+        keys[e.code] = true;
+        if (e.code === "Space" && state.controlledUnitId) {
+          e.preventDefault();
+          triggerControlledAttack();
+        }
+        if (e.code === "KeyE" && state.controlledUnitId) {
+          triggerControlledAbility();
+        }
+      });
+      window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+      function triggerControlledAttack() {
+        const u = state.units.find(x => x.id === state.controlledUnitId && x.team === "player");
+        if (!u || u.atkCooldown > 0) return;
+        performAttack(u);
+      }
+
+      function triggerControlledAbility() {
+        const u = state.units.find(x => x.id === state.controlledUnitId && x.team === "player");
+        if (!u || u.abilityCooldown > 0) return;
+
+        if (u.type === "spearton") {
+          u.x = Math.min(WORLD.enemyStatueX - 30, u.x + 110);
+          u.abilityCooldown = 5;
+          u.atkAnimTimer = 0.35;
+          spawnParticles(u.x, getScreenYFromZ(u.z) - 32, "#9b7bff", 16);
+          state.units.filter(e => e.team === "enemy" && Math.abs(e.x - u.x) < 95).forEach(e => {
+            damageUnit(e, Math.round(u.dmg * 1.7), u.x);
+          });
+        } else if (u.type === "archer") {
+          u.abilityCooldown = 4.5;
+          u.atkAnimTimer = 0.35;
+          for (let i = -1; i <= 1; i++) {
+            state.projectiles.push({
+              team: "player",
+              x: u.x + 14,
+              y: getScreenYFromZ(u.z) - 34 + i * 6,
+              z: u.z,
+              vx: 500,
+              vy: i * 24,
+              dmg: Math.round(u.dmg * 1.0),
+              color: "#4cd97b",
+              life: 1.3
+            });
+          }
+        } else if (u.type === "miner") {
+          u.abilityCooldown = 5;
+          u.carryingGold = 40 + state.upgrades.minerSpeed * 10;
+          u.minerState = "TO_BASE";
+          spawnParticles(u.x, getScreenYFromZ(u.z) - 25, "#f5c542", 14);
+        } else {
+          u.abilityCooldown = 5;
+          u.atkAnimTimer = 0.4;
+          spawnParticles(u.x, getScreenYFromZ(u.z) - 32, u.color, 18);
+          state.units.filter(e => e.team === "enemy" && Math.abs(e.x - u.x) < 115).forEach(e => {
+            damageUnit(e, Math.round(u.dmg * 1.6), u.x);
+          });
+        }
+      }
+
+      function spawnParticles(x, y, color, count = 8) {
+        for (let i = 0; i < count; i++) {
+          state.particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 200,
+            vy: (Math.random() - 0.9) * 170,
+            color,
+            life: 0.35 + Math.random() * 0.25,
+            maxLife: 0.6
+          });
+        }
+      }
+
+      function addFloatingText(x, y, text, color = "#ffd166") {
+        state.floatingTexts.push({
+          x: x + (Math.random() * 16 - 8),
+          y,
+          vy: -48,
+          text,
+          color,
+          life: 0.75,
+          maxLife: 0.75
+        });
+      }
+
+      function damageUnit(target, amount, sourceX = null) {
+        target.hp -= amount;
+        target.hitFlash = 0.16;
+        if (sourceX !== null) {
+          const pushDir = target.x >= sourceX ? 1 : -1;
+          const resist = target.type === "giant" ? 0.25 : target.type === "spearton" ? 0.5 : 1;
+          target.x += pushDir * 10 * resist;
+        }
+        const sy = getScreenYFromZ(target.z);
+        spawnParticles(target.x, sy - 32, "#ff6b6b", 6);
+        addFloatingText(target.x, sy - 58, `-${amount}`, "#ff8a80");
+      }
+
+      function damageStatue(statue, amount) {
+        statue.hp = Math.max(0, statue.hp - amount);
+        statue.hitFlash = 0.16;
+        const sy = getScreenYFromZ(statue.z);
+        spawnParticles(statue.x, sy - 72, "#ffd166", 8);
+        addFloatingText(statue.x, sy - 125, `-${amount}`, "#ffe082");
+      }
+
+      function performAttack(attacker) {
+        const def = UNIT_DEFS[attacker.type];
+        const dir = attacker.team === "player" ? 1 : -1;
+        attacker.atkCooldown = 1 / attacker.atkSpeed;
+        attacker.atkAnimTimer = Math.min(0.28, attacker.atkCooldown * 0.75);
+        attacker.animState = "attack";
+
+        const sy = getScreenYFromZ(attacker.z);
+
+        if (attacker.role === "ranged" || attacker.role === "mage") {
+          state.projectiles.push({
+            team: attacker.team,
+            x: attacker.x + dir * 16,
+            y: sy - 34,
+            z: attacker.z,
+            vx: dir * (attacker.role === "mage" ? 380 : 480),
+            vy: 0,
+            dmg: attacker.dmg,
+            color: attacker.role === "mage" ? "#ff79c6" : "#4cd97b",
+            splash: attacker.role === "mage" ? 65 : 0,
+            life: 1.4
+          });
+          return;
+        }
+
+        state.slashes.push({
+          x: attacker.x + dir * (def.range * 0.55),
+          y: sy - 34,
+          dir,
+          radius: def.range * 0.75,
+          color: attacker.color,
+          life: 0.2,
+          maxLife: 0.2
+        });
+
+        let hitAny = false;
+        const maxTargets = (attacker.type === "spearton" || attacker.type === "giant") ? 2 : 1;
+        let hits = 0;
+
+        for (const other of state.units) {
+          if (other.team === attacker.team) continue;
+          const distX = Math.abs(other.x - attacker.x);
+          const distZ = Math.abs(other.z - attacker.z);
+          if (distX <= def.range + 22 && distZ <= 0.35) {
+            damageUnit(other, attacker.dmg, attacker.x);
+            hitAny = true;
+            hits++;
+            if (hits >= maxTargets) break;
+          }
+        }
+
+        if (!hitAny) {
+          const statue = attacker.team === "player" ? state.enemyStatue : state.playerStatue;
+          const statueDist = Math.abs(statue.x - attacker.x);
+          if (statueDist <= def.range + 42) {
+            damageStatue(statue, attacker.dmg);
+          }
+        }
+      }
+
+      function updateTraining(dt) {
+        if (state.queue.length === 0) return;
+        state.trainTimer -= dt;
+        if (state.trainTimer <= 0) {
+          const finishedType = state.queue.shift();
+          state.units.push(spawnUnit("player", finishedType, state));
+          if (state.queue.length > 0) {
+            state.trainTimer = UNIT_DEFS[state.queue[0]].trainTime;
+          } else {
+            state.trainTimer = 0;
+          }
+        }
+      }
+
+      function updateEnemyAI(dt) {
+        const ai = state.enemy;
+        ai.gold += dt * 3;
+        ai.trainTimer -= dt;
+        ai.decisionTimer -= dt;
+        ai.upgradeTimer -= dt;
+
+        if (ai.openingDelay > 0) {
+          ai.openingDelay = Math.max(0, ai.openingDelay - dt);
+          return;
+        }
+
+        const curPop = getCurrentPop("enemy");
+        if (ai.trainTimer <= 0 && curPop < ai.popCap) {
+          const miners = state.units.filter(u => u.team === "enemy" && u.type === "miner").length;
+          let choice = "swordwrath";
+          if (miners < 2 && ai.gold >= 100) choice = "miner";
+          else if (state.time > 95 && ai.gold >= 800 && Math.random() < 0.25) choice = "magikill";
+          else if (state.time > 65 && ai.gold >= 500 && Math.random() < 0.35) choice = "spearton";
+          else if (state.time > 40 && ai.gold >= 250 && Math.random() < 0.45) choice = "archer";
+
+          const def = UNIT_DEFS[choice];
+          if (ai.gold >= def.cost && curPop + def.pop <= ai.popCap) {
+            ai.gold -= def.cost;
+            state.units.push(spawnUnit("enemy", choice, state));
+            ai.trainTimer = def.trainTime * 2.1 + 3.5;
+          } else {
+            ai.trainTimer = 3.0;
+          }
+        }
+
+        if (ai.upgradeTimer <= 0) {
+          ai.upgradeTimer = 35;
+          if (ai.popCap < 25) ai.popCap += 5;
+        }
+
+        if (ai.decisionTimer <= 0) {
+          ai.decisionTimer = 10.0;
+          const armyPop = state.units
+            .filter(u => u.team === "enemy" && u.type !== "miner")
+            .reduce((a, b) => a + getUnitPop(b), 0);
+          ai.command = (state.time > 45 && armyPop >= 5) ? "ATTACK" : "DEFEND";
+        }
+      }
+
+      function updateUnits(dt) {
+        // Assigna slots de mineração individuais por mineiro e por time
+        const playerMiners = state.units.filter(u => u.team === "player" && u.type === "miner");
+        const enemyMiners = state.units.filter(u => u.team === "enemy" && u.type === "miner");
+
+        playerMiners.forEach((m, idx) => { m.mineSlotIndex = idx; });
+        enemyMiners.forEach((m, idx) => { m.mineSlotIndex = idx; });
+
+        for (const u of state.units) {
+          if (u.atkCooldown > 0) u.atkCooldown = Math.max(0, u.atkCooldown - dt);
+          if (u.atkAnimTimer > 0) u.atkAnimTimer = Math.max(0, u.atkAnimTimer - dt);
+          if (u.abilityCooldown > 0) u.abilityCooldown = Math.max(0, u.abilityCooldown - dt);
+          if (u.hitFlash > 0) u.hitFlash = Math.max(0, u.hitFlash - dt);
+
+          const isPlayer = u.team === "player";
+          const dir = isPlayer ? 1 : -1;
+
+          if (isPlayer && u.id === state.controlledUnitId) {
+            let moveDir = 0;
+            if (keys["KeyA"] || keys["ArrowLeft"]) moveDir -= 1;
+            if (keys["KeyD"] || keys["ArrowRight"]) moveDir += 1;
+            u.vx = moveDir * u.speed * 1.15;
+            u.x = Math.max(60, Math.min(WORLD.width - 60, u.x + u.vx * dt));
+            u.animState = u.atkAnimTimer > 0 ? "attack" : (Math.abs(u.vx) > 5 ? "walk" : "idle");
+            u.animPhase += dt * (u.animState === "walk" ? 13 : 4);
+            continue;
+          }
+
+          // Lógica de Miner corrigida: cada mineiro tem seu próprio slot no veio e na base
+          if (u.type === "miner") {
+            const mine = isPlayer ? WORLD.goldMines[0] : WORLD.goldMines[1];
+            const slotIdx = u.mineSlotIndex || 0;
+            const slotOffsetX = (slotIdx % 4) * 16 * dir;
+            const slotTargetZ = Math.min(0.86, Math.max(0.24, 0.34 + (slotIdx % 5) * 0.12));
+
+            const mineTargetX = mine.x + dir * 24 + slotOffsetX;
+            const baseTargetX = (isPlayer ? WORLD.playerSpawnX : WORLD.enemySpawnX) + (slotIdx % 4) * 18 * dir;
+
+            if (u.minerState === "TO_MINE") {
+              const dx = mineTargetX - u.x;
+              const dz = slotTargetZ - u.z;
+              u.z += Math.sign(dz) * Math.min(Math.abs(dz), dt * 0.45);
+              if (Math.abs(dx) > 8) {
+                u.vx = Math.sign(dx) * u.speed;
+                u.x += u.vx * dt;
+                u.animState = "walk";
+              } else {
+                u.vx = 0;
+                u.minerState = "MINING";
+                u.mineTimer = Math.max(2.0, 3.8 - (isPlayer ? state.upgrades.minerSpeed * 0.35 : 0));
+                u.animState = "mine";
+              }
+            } else if (u.minerState === "MINING") {
+              u.vx = 0;
+              u.animState = "mine";
+              u.mineTimer -= dt;
+              if (u.mineTimer <= 0) {
+                const bonus = isPlayer ? state.upgrades.minerSpeed * 6 : 0;
+                u.carryingGold = 25 + bonus;
+                u.minerState = "TO_BASE";
+              }
+            } else if (u.minerState === "TO_BASE") {
+              const dx = baseTargetX - u.x;
+              const dz = slotTargetZ - u.z;
+              u.z += Math.sign(dz) * Math.min(Math.abs(dz), dt * 0.45);
+              if (Math.abs(dx) > 12) {
+                u.vx = Math.sign(dx) * u.speed;
+                u.x += u.vx * dt;
+                u.animState = "walk";
+              } else {
+                u.vx = 0;
+                if (isPlayer) state.gold += u.carryingGold;
+                else state.enemy.gold += u.carryingGold;
+                const sy = getScreenYFromZ(u.z);
+                spawnParticles(u.x, sy - 24, "#f5c542", 8);
+                addFloatingText(u.x, sy - 46, `+${u.carryingGold}🪙`, "#f5c542");
+                u.carryingGold = 0;
+                u.minerState = "TO_MINE";
+                u.animState = "idle";
+              }
+            }
+            u.animPhase += dt * (u.animState === "walk" ? 12 : u.animState === "mine" ? 9 : 3);
+            continue;
+          }
+
+          // Tropas de combate
+          const def = UNIT_DEFS[u.type];
+          let nearestEnemy = null;
+          let nearestDist = Infinity;
+          for (const other of state.units) {
+            if (other.team === u.team) continue;
+            const d = Math.abs(other.x - u.x);
+            if (d < nearestDist) {
+              nearestDist = d;
+              nearestEnemy = other;
+            }
+          }
+
+          const enemyStatue = isPlayer ? state.enemyStatue : state.playerStatue;
+          const statueDist = Math.abs(enemyStatue.x - u.x);
+          const cmd = isPlayer ? state.command : state.enemy.command;
+
+          if (nearestEnemy && nearestDist <= def.range + 20) {
+            u.vx = 0;
+            u.z += Math.sign(nearestEnemy.z - u.z) * Math.min(Math.abs(nearestEnemy.z - u.z), dt * 0.4);
+            if (u.atkCooldown <= 0) performAttack(u);
+            u.animState = u.atkAnimTimer > 0 ? "attack" : "idle";
+            u.animPhase += dt * (u.animState === "attack" ? 16 : 3);
+            continue;
+          }
+
+          if (cmd === "ATTACK" && statueDist <= def.range + 38) {
+            u.vx = 0;
+            if (u.atkCooldown <= 0) performAttack(u);
+            u.animState = u.atkAnimTimer > 0 ? "attack" : "idle";
+            u.animPhase += dt * (u.animState === "attack" ? 16 : 3);
+            continue;
+          }
+
+          let targetX = u.x;
+          let targetZ = u.z;
+          if (cmd === "ATTACK") {
+            targetX = nearestEnemy
+              ? nearestEnemy.x - dir * (def.range * 0.65)
+              : enemyStatue.x - dir * 45;
+            targetZ = nearestEnemy ? nearestEnemy.z : 0.48;
+          } else if (cmd === "DEFEND") {
+            if (nearestEnemy && nearestDist < 420) {
+              targetX = nearestEnemy.x - dir * (def.range * 0.65);
+              targetZ = nearestEnemy.z;
+            } else {
+              targetX = isPlayer ? WORLD.playerSpawnX + 110 : WORLD.enemySpawnX - 110;
+              targetZ = 0.48;
+            }
+          } else if (cmd === "STAND") {
+            targetX = u.x;
+          }
+
+          const diffX = targetX - u.x;
+          const diffZ = targetZ - u.z;
+          u.z = Math.max(0.2, Math.min(0.9, u.z + Math.sign(diffZ) * Math.min(Math.abs(diffZ), dt * 0.35)));
+
+          if (Math.abs(diffX) > 6) {
+            u.vx = Math.sign(diffX) * u.speed;
+            u.x += u.vx * dt;
+            u.animState = "walk";
+          } else {
+            u.vx = 0;
+            u.animState = u.atkAnimTimer > 0 ? "attack" : "idle";
+          }
+
+          u.animPhase += dt * (u.animState === "walk" ? 13 : u.animState === "attack" ? 16 : 3);
+        }
+
+        // Separação suave apenas quando estão na mesma faixa z e muito próximos
+        for (let i = 0; i < state.units.length; i++) {
+          for (let j = i + 1; j < state.units.length; j++) {
+            const a = state.units[i];
+            const b = state.units[j];
+            if (a.team !== b.team) continue;
+            if (Math.abs(a.z - b.z) > 0.16) continue;
+            const dx = b.x - a.x;
+            const minSep = (a.type === "giant" || b.type === "giant") ? 32 : 20;
+            if (Math.abs(dx) < minSep) {
+              const push = (minSep - Math.abs(dx)) * 0.5;
+              const s = dx >= 0 ? 1 : -1;
+              a.x -= s * push;
+              b.x += s * push;
+            }
+          }
+        }
+
+        state.units = state.units.filter(u => {
+          if (u.hp <= 0) {
+            if (u.id === state.selectedUnitId) state.selectedUnitId = null;
+            if (u.id === state.controlledUnitId) state.controlledUnitId = null;
+            return false;
+          }
+          return true;
+        });
+      }
+
+      function updateCamera(dt) {
+        if (camera.mode === "OVERVIEW") {
+          camera.x += (300 - camera.x) * Math.min(1, dt * 4);
+          return;
+        }
+
+        if (state.controlledUnitId) {
+          const ctrl = state.units.find(u => u.id === state.controlledUnitId);
+          if (ctrl) {
+            const desired = Math.max(0, Math.min(WORLD.width - canvas.width, ctrl.x - canvas.width * 0.45));
+            camera.x += (desired - camera.x) * Math.min(1, dt * 6);
+            return;
+          }
+        }
+
+        const playerCombat = state.units.filter(u => u.team === "player" && u.type !== "miner");
+        if (playerCombat.length > 0) {
+          const avgX = playerCombat.reduce((acc, u) => acc + u.x, 0) / playerCombat.length;
+          const desired = Math.max(0, Math.min(WORLD.width - canvas.width, avgX - canvas.width * 0.35));
+          camera.x += (desired - camera.x) * Math.min(1, dt * 3.5);
+        } else {
+          camera.x += (0 - camera.x) * Math.min(1, dt * 3.5);
+        }
+      }
+
+      function updateProjectiles(dt) {
+        for (const p of state.projectiles) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+
+          let hit = false;
+          for (const u of state.units) {
+            if (u.team === p.team) continue;
+            const uy = getScreenYFromZ(u.z);
+            if (Math.abs(u.x - p.x) < 22 && Math.abs((uy - 32) - p.y) < 42) {
+              if (p.splash > 0) {
+                state.units
+                  .filter(e => e.team !== p.team && Math.abs(e.x - p.x) <= p.splash)
+                  .forEach(e => damageUnit(e, p.dmg, p.x));
+              } else {
+                damageUnit(u, p.dmg, p.x);
+              }
+              hit = true;
+              break;
+            }
+          }
+
+          if (!hit) {
+            const statue = p.team === "player" ? state.enemyStatue : state.playerStatue;
+            if (Math.abs(statue.x - p.x) < 34) {
+              damageStatue(statue, p.dmg);
+              hit = true;
+            }
+          }
+
+          if (hit) p.life = 0;
+        }
+        state.projectiles = state.projectiles.filter(p => p.life > 0);
+      }
+
+      function updateEffects(dt) {
+        for (const pt of state.particles) {
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.vy += 280 * dt;
+          pt.life -= dt;
+        }
+        state.particles = state.particles.filter(pt => pt.life > 0);
+
+        for (const sl of state.slashes) {
+          sl.life -= dt;
+        }
+        state.slashes = state.slashes.filter(sl => sl.life > 0);
+
+        for (const ft of state.floatingTexts) {
+          ft.y += ft.vy * dt;
+          ft.life -= dt;
+        }
+        state.floatingTexts = state.floatingTexts.filter(ft => ft.life > 0);
+
+        if (state.playerStatue.hitFlash > 0) state.playerStatue.hitFlash = Math.max(0, state.playerStatue.hitFlash - dt);
+        if (state.enemyStatue.hitFlash > 0) state.enemyStatue.hitFlash = Math.max(0, state.enemyStatue.hitFlash - dt);
+      }
+
+      function checkVictory() {
+        if (state.over) return;
+        if (state.enemyStatue.hp <= 0) {
+          state.over = true;
+          overlayTitle.textContent = "VITÓRIA!";
+          overlayDesc.textContent = `A estátua inimiga foi destruída em ${formatTime(state.time)}.`;
+          overlayBanner.classList.add("show");
+        } else if (state.playerStatue.hp <= 0) {
+          state.over = true;
+          overlayTitle.textContent = "DERROTA";
+          overlayDesc.textContent = `Sua estátua caiu após ${formatTime(state.time)}.`;
+          overlayBanner.classList.add("show");
+        }
+      }
+
+      function formatTime(sec) {
+        const m = String(Math.floor(sec / 60)).padStart(2, "0");
+        const s = String(Math.floor(sec % 60)).padStart(2, "0");
+        return `${m}:${s}`;
+      }
+
+      function drawStatue(statue, isPlayer) {
+        const x = statue.x;
+        const y = getScreenYFromZ(statue.z);
+        const color = isPlayer ? "#4aa3ff" : "#ff5252";
+
+        // Sombra no chão
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 4, 46, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pedestal em perspectiva
+        ctx.fillStyle = "#4b4137";
+        ctx.fillRect(x - 38, y - 18, 76, 18);
+        ctx.fillStyle = "#2d261f";
+        ctx.fillRect(x - 38, y - 4, 76, 5);
+
+        // Corpo da estátua com relevo lateral
+        ctx.fillStyle = statue.hitFlash > 0 ? "#ffffff" : (isPlayer ? "#8ba0b5" : "#b57c7c");
+        ctx.beginPath();
+        ctx.moveTo(x - 24, y - 18);
+        ctx.lineTo(x - 16, y - 104);
+        ctx.lineTo(x + 16, y - 104);
+        ctx.lineTo(x + 24, y - 18);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y - 118, 13, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x - 12, y - 134, 24, 5);
+
+        const bw = 90;
+        const bh = 8;
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(x - bw / 2, y - 154, bw, bh);
+        ctx.fillStyle = color;
+        ctx.fillRect(x - bw / 2, y - 154, bw * (statue.hp / statue.maxHp), bh);
+      }
+
+      function drawStickUnit(u) {
+        const isPlayer = u.team === "player";
+        const dir = isPlayer ? 1 : -1;
+        const baseScale = getScaleFromZ(u.z);
+        const classScale = u.type === "giant" ? 1.55 : u.type === "spearton" ? 1.12 : 1.0;
+        const scale = baseScale * classScale;
+        const x = u.x;
+        const y = getScreenYFromZ(u.z);
+
+        // Sombra elíptica no chão
+        ctx.fillStyle = "rgba(0,0,0,0.32)";
+        ctx.beginPath();
+        ctx.ellipse(x, y, 14 * scale, 4.5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (u.id === state.selectedUnitId) {
+          ctx.strokeStyle = u.id === state.controlledUnitId ? "#4cd97b" : "#f5c542";
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.ellipse(x, y, 22 * scale, 7 * scale, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        const bw = 30 * scale;
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillRect(x - bw / 2, y - 58 * scale, bw, 4);
+        ctx.fillStyle = isPlayer ? "#4aa3ff" : "#ff5252";
+        ctx.fillRect(x - bw / 2, y - 58 * scale, bw * Math.max(0, u.hp / u.maxHp), 4);
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        const isWalking = u.animState === "walk";
+        const isAttacking = u.animState === "attack";
+        const isMining = u.animState === "mine";
+
+        const legSwing = isWalking ? Math.sin(u.animPhase) * 9 : 2;
+        const bodyBob = isWalking ? Math.abs(Math.cos(u.animPhase)) * -3 : 0;
+        const atkProgress = isAttacking ? Math.sin((1 - Math.min(1, u.atkAnimTimer / 0.28)) * Math.PI) : 0;
+        const mineSwing = isMining ? Math.sin(u.animPhase) * 14 : 0;
+
+        ctx.strokeStyle = u.hitFlash > 0 ? "#ffffff" : (isPlayer ? "#e8f1ff" : "#ffd6d6");
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+
+        ctx.beginPath();
+        ctx.moveTo(0, -24 + bodyBob);
+        ctx.lineTo(-legSwing, 0);
+        ctx.moveTo(0, -24 + bodyBob);
+        ctx.lineTo(legSwing, 0);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, -40 + bodyBob);
+        ctx.lineTo(0, -24 + bodyBob);
+        ctx.stroke();
+
+        ctx.fillStyle = u.color;
+        ctx.beginPath();
+        ctx.arc(dir * (atkProgress * 3), -47 + bodyBob, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        const armAngle = isAttacking
+          ? -0.8 + atkProgress * 1.5
+          : isMining
+          ? -0.9 + Math.sin(u.animPhase) * 0.8
+          : -0.2;
+
+        const armEndX = dir * (14 + Math.cos(armAngle) * 8 + atkProgress * 8);
+        const armEndY = -36 + bodyBob + Math.sin(armAngle) * 10;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -37 + bodyBob);
+        ctx.lineTo(armEndX, armEndY);
+        ctx.stroke();
+
+        if (u.type === "swordwrath") {
+          ctx.strokeStyle = "#90caf9";
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(armEndX, armEndY);
+          ctx.lineTo(armEndX + dir * 22, armEndY - 12 + atkProgress * 18);
+          ctx.stroke();
+        } else if (u.type === "spearton") {
+          ctx.strokeStyle = "#d1c4e9";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(armEndX - dir * 10, armEndY + 8);
+          ctx.lineTo(armEndX + dir * 28, armEndY - 14 + atkProgress * 10);
+          ctx.stroke();
+        } else if (u.type === "archer") {
+          ctx.strokeStyle = "#a5d6a7";
+          ctx.beginPath();
+          ctx.arc(dir * 14, -35 + bodyBob, 11, -Math.PI * 0.45, Math.PI * 0.45);
+          ctx.stroke();
+        } else if (u.type === "miner") {
+          ctx.fillStyle = "#f5c542";
+          ctx.fillRect(armEndX - 4, armEndY - 4, 9, 9);
+          ctx.strokeStyle = "#d49b1d";
+          ctx.beginPath();
+          ctx.moveTo(armEndX, armEndY);
+          ctx.lineTo(armEndX + dir * 12, armEndY - 8 + mineSwing * 0.3);
+          ctx.stroke();
+        } else if (u.type === "magikill") {
+          ctx.strokeStyle = "#ff79c6";
+          ctx.beginPath();
+          ctx.moveTo(armEndX, armEndY + 12);
+          ctx.lineTo(armEndX + dir * 4, armEndY - 22);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Céu com gradiente atmosférico
+        const sky = ctx.createLinearGradient(0, 0, 0, WORLD.groundTopY);
+        sky.addColorStop(0, "#1c2838");
+        sky.addColorStop(0.65, "#364a3e");
+        sky.addColorStop(1, "#556844");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, WORLD.groundTopY);
+
+        ctx.save();
+        ctx.translate(-camera.x, 0);
+
+        // Cadeia de montanhas ao fundo com paralaxe
+        ctx.fillStyle = "#223029";
+        ctx.beginPath();
+        ctx.moveTo(0, WORLD.groundTopY);
+        for (let x = 0; x <= WORLD.width; x += 70) {
+          const h = 55 + Math.sin(x * 0.008) * 26 + Math.cos(x * 0.019) * 14;
+          ctx.lineTo(x, WORLD.groundTopY - h);
+        }
+        ctx.lineTo(WORLD.width, WORLD.groundTopY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Faixa de terreno em perspectiva (trapézio de profundidade)
+        const groundGrad = ctx.createLinearGradient(0, WORLD.groundTopY, 0, canvas.height);
+        groundGrad.addColorStop(0, "#4f6538");
+        groundGrad.addColorStop(0.35, "#3b2f21");
+        groundGrad.addColorStop(1, "#231b13");
+        ctx.fillStyle = groundGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, WORLD.groundTopY);
+        ctx.lineTo(WORLD.width, WORLD.groundTopY);
+        ctx.lineTo(WORLD.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        // Linha de horizonte e trilhas de profundidade
+        ctx.strokeStyle = "rgba(255, 240, 200, 0.12)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const z = i / 4;
+          const ly = getScreenYFromZ(z);
+          ctx.beginPath();
+          ctx.moveTo(0, ly);
+          ctx.lineTo(WORLD.width, ly);
+          ctx.stroke();
+        }
+
+        // Veios de ouro em perspectiva
+        for (const mine of WORLD.goldMines) {
+          const my = getScreenYFromZ(mine.z);
+          ctx.fillStyle = "rgba(0,0,0,0.35)";
+          ctx.beginPath();
+          ctx.ellipse(mine.x, my + 4, 34, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#d99b1e";
+          ctx.beginPath();
+          ctx.arc(mine.x, my, 24, Math.PI, 0);
+          ctx.fill();
+
+          ctx.fillStyle = "#ffe082";
+          ctx.font = "bold 11px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("OURO", mine.x, my - 8);
+        }
+
+        // Ordena entidades por profundidade z para oclusão natural
+        const renderQueue = [
+          { kind: "statue", obj: state.playerStatue, z: state.playerStatue.z },
+          { kind: "statue", obj: state.enemyStatue, z: state.enemyStatue.z },
+          ...state.units.map(u => ({ kind: "unit", obj: u, z: u.z }))
+        ].sort((a, b) => a.z - b.z);
+
+        for (const item of renderQueue) {
+          if (item.kind === "statue") {
+            drawStatue(item.obj, item.obj.team === "player");
+          } else {
+            drawStickUnit(item.obj);
+          }
+        }
+
+        for (const sl of state.slashes) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, sl.life / sl.maxLife);
+          ctx.strokeStyle = sl.color;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          if (sl.dir === 1) {
+            ctx.arc(sl.x - 10, sl.y, sl.radius, -Math.PI * 0.45, Math.PI * 0.45);
+          } else {
+            ctx.arc(sl.x + 10, sl.y, sl.radius, Math.PI * 0.55, Math.PI * 1.45);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (const p of state.projectiles) {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (const pt of state.particles) {
+          ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x, pt.y, 4, 4);
+        }
+        ctx.globalAlpha = 1;
+
+        for (const ft of state.floatingTexts) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+          ctx.fillStyle = ft.color;
+          ctx.font = "bold 13px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        ctx.restore();
+
+        // HUD fixo no topo do canvas
+        ctx.fillStyle = "rgba(0,0,0,0.48)";
+        ctx.fillRect(14, 14, 295, 28);
+        ctx.fillStyle = "#f3ead8";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "left";
+        const aiStatus = state.enemy.openingDelay > 0
+          ? `IA Preparando (${Math.ceil(state.enemy.openingDelay)}s)`
+          : `Inimigo: ${state.enemy.command}`;
+        ctx.fillText(`Comando: ${state.command} | ${aiStatus}`, 24, 32);
+      }
+
+      function updateUI() {
+        document.getElementById("goldDisplay").textContent = Math.floor(state.gold);
+        const pop = getCurrentPop("player");
+        const cap = getPlayerPopCap();
+        document.getElementById("popDisplay").textContent = `${pop}/${cap}`;
+        document.getElementById("timeDisplay").textContent = formatTime(state.time);
+        document.getElementById("playerStatueDisplay").textContent = Math.ceil(state.playerStatue.hp);
+        document.getElementById("enemyStatueDisplay").textContent = Math.ceil(state.enemyStatue.hp);
+
+        queueCountLabel.textContent = `Fila: ${state.queue.length}/5`;
+        if (state.queue.length === 0) {
+          queueStripEl.textContent = "Fila vazia — clique em uma unidade para treinar.";
+        } else {
+          queueStripEl.innerHTML = state.queue
+            .map((t, idx) => `<span class="queue-chip">${idx === 0 ? `⏳ ${UNIT_DEFS[t].name} (${state.trainTimer.toFixed(1)}s)` : UNIT_DEFS[t].name}</span>`)
+            .join("");
+        }
+
+        const reservedPop = pop + getQueuePop();
+        unitButtonsEl.querySelectorAll(".unit-btn").forEach(btn => {
+          const type = btn.dataset.type;
+          const def = UNIT_DEFS[type];
+          const canAfford = state.gold >= def.cost;
+          const hasSpace = state.queue.length < 5 && reservedPop + def.pop <= cap;
+          btn.disabled = !canAfford || !hasSpace || state.over;
+
+          const bar = btn.querySelector(".u-progress");
+          if (state.queue[0] === type && state.trainTimer > 0) {
+            const pct = Math.max(0, Math.min(100, (1 - state.trainTimer / def.trainTime) * 100));
+            bar.style.width = `${pct}%`;
+          } else {
+            bar.style.width = "0%";
+          }
+        });
+
+        upgradeButtonsEl.querySelectorAll("[data-upg]").forEach(btn => {
+          const key = btn.dataset.upg;
+          const def = UPGRADE_DEFS[key];
+          const lv = state.upgrades[key];
+          const cost = getUpgradeCost(key);
+          const maxed = lv >= def.maxLv;
+          btn.disabled = maxed || state.gold < cost || state.over;
+          btn.textContent = maxed
+            ? `${def.name} (MAX)`
+            : `${def.name} Lv.${lv} (🪙 ${cost})`;
+          btn.title = def.desc;
+        });
+
+        const sel = state.units.find(u => u.id === state.selectedUnitId);
+        if (sel) {
+          const ctrlTag = sel.id === state.controlledUnitId ? " [CONTROLE DIRETO]" : "";
+          selectedInfoEl.innerHTML = `<b>${sel.name}</b>${ctrlTag} — HP: ${Math.ceil(sel.hp)}/${sel.maxHp} • ATK: ${sel.dmg} • Alcance: ${sel.range}`;
+        } else {
+          selectedInfoEl.textContent = "Nenhuma unidade selecionada. Clique em um boneco seu no campo para inspecionar ou controlar.";
+        }
+      }
+
+      let lastTime = performance.now();
+      let uiSyncAcc = 0;
+
+      function loop(now) {
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+
+        if (!state.over) {
+          state.time += dt;
+          updateTraining(dt);
+          updateEnemyAI(dt);
+          updateUnits(dt);
+          updateProjectiles(dt);
+          updateEffects(dt);
+          updateCamera(dt);
+          checkVictory();
+        }
+
+        render();
+
+        uiSyncAcc += dt;
+        if (uiSyncAcc >= 0.1) {
+          uiSyncAcc = 0;
+          updateUI();
+        }
+
+        requestAnimationFrame(loop);
+      }
+
+      buildStaticUI();
+      state = createInitialState();
+      updateUI();
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
